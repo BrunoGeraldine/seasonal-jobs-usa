@@ -88,9 +88,12 @@ if all_jobs:
     
     print(f"{'='*60}")
     
-    # Salva em CSV
-    df.to_csv("../dataset/seasonal_jobs_raw.csv", index=False, encoding='utf-8')
-    print(f"✓ Arquivo CSV salvo: '../dataset/seasonal_jobs_raw.csv'")
+    ## Salva em CSV
+    #df.to_csv("../dataset/seasonal_jobs_raw.csv", index=False, encoding='utf-8')
+    #print(f"✓ Arquivo CSV salvo: '../dataset/seasonal_jobs_raw.csv'")
+    # Salva em Parquet
+    df.to_parquet("../dataset/seasonal_jobs_raw.parquet", index=False)
+    print(f"✓ Arquivo Parquet salvo: '../dataset/seasonal_jobs_raw.parquet'")
     
     # Exibe primeiras linhas
     print(f"\nPrimeiras linhas do DataFrame:")
