@@ -7,81 +7,54 @@ link-json: https://seasonaljobs.dol.gov/feeds
 Usar o link para atualizar os dados pois a API nao traz as informacoes necessarias
 
 Tratamento de dados:
-1. Baixar os dois arquivos H2A e H2B
-2. transformar em dataframe incluindo uma coluna para cada  tipo de visto
-3. Concatenar os dois arquivos
-4. Filtrar colunas
-5. Renomear colunas para melhor entendimento
-obs.: colunas de informacoes dos dados para aplicacao:  "recApplyPhone" = "Phone", "recApplyEmail" = "Email", "recApplyUrl" ="ApplyHere"
-6. criar coluna URL vaga =CONCATENATE("https://seasonaljobs.dol.gov/jobs/" + "caseNumber")
-7. Salvar arquivo em csv.
+1. Renomear colunas para melhor entendimento
+obs.: colunas de informacoes dos dados para aplicacao (CLAUDE pode sugerir conforme voce entender)
+2. criar coluna "url_job" =CONCATENATE("https://seasonaljobs.dol.gov/jobs/" + "caseNumber")
+7. Salvar arquivo em parquet.
 
+Colunas selecionadas:
 
-Para teste da aplicacao em python, iremos ler os dados da api e salvar num dataframe em csv para criacao dos filtros dentro do streamlit
+"case_id", "case_number", "case_status", "visa_class", "job_title", "basic_rate_from", "basic_rate_to", "overtime_rate_to", "overtime_rate_from", "work_hour_num_basic", "add_wage_info", "total_positions", "full_time", "hourly_work_schedule_am	", "hourly_work_schedule_pm	", "is_overtime_available", "begin_date	", "end_date", "emp_exp_num_months", "special_req", "training_req", "num_months_training", "education_level", "pay_range_desc", "employer_business_name", "employer_city	", "employer_state	", "employer_zip", "worksite_locations", "worksite_address", "worksite_city	", "worksite_state	", "worksite_zip", "apply_email", "apply_phone", "apply_url", "job_order_exists", "active_date"
 
-
-Salary:
-Full Time:
-Experience Required:
-
-o filtros devem trazer ocm o resultado os dados abaixo:
-
-Telephone Number to Apply:
-Email address to Apply:
-Location:
-Salary:
-Full Time:
-Experience Required:
-Number of Workers Requested:
-Number of Hours Per Week: 
-Work Schedule (Start/End time):
-Address:
-Multiple Worksites:
+Criar novas colunas
+"url_job" = CONCATENATE("https://seasonaljobs.dol.gov/jobs/" + "case_number")
 
 
 
 
 
+refatore o codigo abaixo para atender os requisitos
 
-1. Selecionar apenas algumas colunas importantes:
+Filtros No menu lateral (sidebar)
+'case_number': com opcao de preenchimento a mao do valor
+basic_rate_from: 
+work_hour_num_basic:
+emp_experience_reqd:
+begin_date: capturar apenas o mes
+emp_exp_num_months:
+tot_months: encontrar a diferenca entre as datas 'end_date' e 'begin_date'	
+worksite_city
+worksite_state
 
 
 
-caseNumber
-tempneedJobtitle
-tempneedSocTitle
-tempneedWkrPos
-tempneedStart	
-tempneedEnd
-tempneedNature
-tempneedDescription
-empBusinessName
-empAddr1
-empCity	
-empState
-empPhone
-empPhoneext
-emppocLastname	
-emppocFirstname
-emppocMiddlename
-emppocJobtitle
-emppocAddr1	
-emppocAddr2	
-emppocCity	
-emppocState
-emppocPostcode
-emppocPhone
-emppocEmail	attyRepresentType	attyLastname	attyFirstname	attyMiddlename	attyAddr1	attyAddr2	attyCity	attyState	attyPostcode	attyCountry	attyProvince	attyPhone	attyPhoneext	attyEmail	attyBizname
-jobDuties
-jobHoursTotal	jobHoursSun	jobHoursMon	jobHoursTues	jobHoursWed	jobHoursThu	jobHoursFri	jobHoursSat	jobHourStart	jobStartperiod	jobHourEnd	jobEndperiod
-jobMinexpmonths
-jobMinspecialreq
-jobAddr1	jobAddr2	jobCity	jobState	jobPostcode	jobCounty	jobMsa	wageFrom	wageTo
-wageOtFrom	wageOtTo	wagePer	wageAdditional
-jobMultiplesites
-recPayDeductions
-recApplyPhone	recApplyEmail	recApplyUrl
-empflrecEngageH2b	empflrecEngageH2bAttached
+
+o filtros devem resultar numa tabela as colunas abaixo:
+
+'case_id', 'case_number', 'case_status', 'visa_class', 'job_title',
+'basic_rate_from', 'basic_rate_to', 'overtime_rate_from', 'overtime_rate_to',
+'work_hour_num_basic', 'add_wage_info', 'total_positions', 'full_time',
+'hourly_work_schedule_am', 'hourly_work_schedule_pm', 'is_overtime_available',
+'begin_date', 'end_date', 'emp_exp_num_months', 'special_req',
+'training_req', 'num_months_training', 'education_level', 'pay_range_desc',
+'employer_business_name', 'employer_city', 'employer_state', 'employer_zip',
+'worksite_locations', 'worksite_address', 'worksite_city', 'worksite_state',
+'worksite_zip', 'apply_email', 'apply_phone', 'apply_url',
+'job_order_exists', 'active_date', 'url_job'
+
+
+
+
 
 
 

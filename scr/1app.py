@@ -9,115 +9,189 @@ st.set_page_config(page_title="H2 Jobs", layout="wide")
 # --------------------------------------------------
 # Load data
 # --------------------------------------------------
-df = pd.read_csv("../dataset/seasonal_jobs_raw.csv")
-
-# Debug (use apenas se precisar)
-# st.write(df.columns.tolist())
+df = pd.read_parquet("../dataset/seasonal_jobs_treated.parquet")
 
 # --------------------------------------------------
-# Defensive type casting (important)
+# Defensive casting
 # --------------------------------------------------
-salary_cols = ["basic_rate_from", "basic_rate_to"]
-for col in salary_cols:
+numeric_cols = [
+    "basic_rate_from", "basic_rate_to",
+    "work_hour_num_basic", "emp_exp_num_months"
+]
+
+for col in numeric_cols:
     if col in df.columns:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
+date_cols = ["begin_date", "end_date"]
+for col in date_cols:
+    if col in df.columns:
+        df[col] = pd.to_datetime(df[col], errors="coerce")
+
 # --------------------------------------------------
-# Salary filter
+# Derived columns
 # --------------------------------------------------
+df["begin_month"] = df["begin_date"].dt.to_period("M").astype(str)
+
+df["tot_months"] = (
+    (df["end_date"] - df["begin_date"])
+    .dt.days.div(30)
+)
+
+# --------------------------------------------------
+# Sidebar filters
+# --------------------------------------------------
+st.sidebar.header("Filters")
+
+# Salary
 salary_min = float(df["basic_rate_from"].min())
-salary_max = float(df["basic_rate_to"].max())
+salary_max = float(df["basic_rate_from"].max())
 
-min_salary, max_salary = st.slider(
-    "Salary range",
-    min_value=salary_min,
-    max_value=salary_max,
-    value=(salary_min, salary_max)
+salary_range = st.sidebar.slider(
+    "Basic Rate From",
+    salary_min,
+    salary_max,
+    (salary_min, salary_max)
 )
 
-# --------------------------------------------------
-# Full Time filter
-# --------------------------------------------------
-full_time_filter = st.selectbox(
-    "Full Time",
-    options=["All", "Yes", "No"]
+# Work hours
+work_hour_min = int(df["work_hour_num_basic"].min())
+work_hour_max = int(df["work_hour_num_basic"].max())
+
+work_hour_range = st.sidebar.slider(
+    "Work Hours (Basic)",
+    work_hour_min,
+    work_hour_max,
+    (work_hour_min, work_hour_max)
 )
 
-# --------------------------------------------------
-# Experience Required filter
-# --------------------------------------------------
-experience_filter = st.selectbox(
+# Experience required
+experience_filter = st.sidebar.selectbox(
     "Experience Required",
-    options=["All", "Yes", "No"]
+    ["All", "Yes", "No"],
+    index=0
+)
+
+# Begin month
+begin_months = sorted(df["begin_month"].dropna().unique())
+selected_months = st.sidebar.multiselect(
+    "Begin Month",
+    begin_months,
+    default=[]
+)
+
+# Experience months
+exp_min = int(df["emp_exp_num_months"].min())
+exp_max = int(df["emp_exp_num_months"].max())
+
+exp_months_range = st.sidebar.slider(
+    "Experience (Months)",
+    exp_min,
+    exp_max,
+    (exp_min, exp_max)
+)
+
+# Total contract months
+tot_min = int(df["tot_months"].min())
+tot_max = int(df["tot_months"].max())
+
+tot_months_range = st.sidebar.slider(
+    "Total Contract Months",
+    tot_min,
+    tot_max,
+    (tot_min, tot_max)
+)
+
+# Location filters
+cities = sorted(df["worksite_city"].dropna().unique())
+states = sorted(df["worksite_state"].dropna().unique())
+
+selected_cities = st.sidebar.multiselect(
+    "Worksite City",
+    cities,
+    default=[]
+)
+
+selected_states = st.sidebar.multiselect(
+    "Worksite State",
+    states,
+    default=[]
 )
 
 # --------------------------------------------------
-# Apply filters
+# Apply filters (conditional)
 # --------------------------------------------------
 filtered_df = df.copy()
 
-filtered_df = filtered_df[
-    (filtered_df["basic_rate_from"] >= min_salary) &
-    (filtered_df["basic_rate_to"] <= max_salary)
-]
-
-if full_time_filter != "All":
+# Salary
+if salary_range != (salary_min, salary_max):
     filtered_df = filtered_df[
-        filtered_df["full_time"] == (full_time_filter == "Yes")
+        filtered_df["basic_rate_from"].between(*salary_range)
     ]
 
+# Work hours
+if work_hour_range != (work_hour_min, work_hour_max):
+    filtered_df = filtered_df[
+        filtered_df["work_hour_num_basic"].between(*work_hour_range)
+    ]
+
+# Experience months
+if exp_months_range != (exp_min, exp_max):
+    filtered_df = filtered_df[
+        filtered_df["emp_exp_num_months"].between(*exp_months_range)
+    ]
+
+# Total months
+if tot_months_range != (tot_min, tot_max):
+    filtered_df = filtered_df[
+        filtered_df["tot_months"].between(*tot_months_range)
+    ]
+
+# Begin month
+if selected_months:
+    filtered_df = filtered_df[
+        filtered_df["begin_month"].isin(selected_months)
+    ]
+
+# Location
+if selected_cities:
+    filtered_df = filtered_df[
+        filtered_df["worksite_city"].isin(selected_cities)
+    ]
+
+if selected_states:
+    filtered_df = filtered_df[
+        filtered_df["worksite_state"].isin(selected_states)
+    ]
+
+# Experience required
 if experience_filter != "All":
     filtered_df = filtered_df[
         filtered_df["emp_experience_reqd"] == (experience_filter == "Yes")
     ]
 
 # --------------------------------------------------
-# Columns mapping (API -> UI)
+# Final columns
 # --------------------------------------------------
-COLUMNS_MAP = {
-    "apply_phone": "Telephone Number to Apply",
-    "apply_email": "Email Address to Apply",
-    "worksite_city": "Location",
-    "basic_rate_from": "Salary (From)",
-    "basic_rate_to": "Salary (To)",
-    "full_time": "Full Time",
-    "emp_experience_reqd": "Experience Required",
-    "total_positions": "Number of Workers Requested",
-    "work_hour_num_basic": "Number of Hours Per Week",
-    "hourly_work_schedule_am": "Work Schedule (Start time)",
-    "hourly_work_schedule_pm": "Work Schedule (End time)",
-    "worksite_address": "Address",
-    "worksite_locations": "Multiple Worksites",
-}
-
-FINAL_COLUMNS = list(COLUMNS_MAP.values())
-
-# --------------------------------------------------
-# Build display DataFrame (safe)
-# --------------------------------------------------
-available_columns = [
-    col for col in COLUMNS_MAP.keys()
-    if col in filtered_df.columns
+FINAL_COLUMNS = [
+    'case_id', 'case_number', 'case_status', 'visa_class', 'job_title',
+    'basic_rate_from', 'basic_rate_to', 'overtime_rate_from', 'overtime_rate_to',
+    'work_hour_num_basic', 'add_wage_info', 'total_positions', 'full_time',
+    'hourly_work_schedule_am', 'hourly_work_schedule_pm', 'is_overtime_available',
+    'begin_date', 'end_date', 'emp_exp_num_months', 'special_req',
+    'training_req', 'num_months_training', 'education_level', 'pay_range_desc',
+    'employer_business_name', 'employer_city', 'employer_state', 'employer_zip',
+    'worksite_locations', 'worksite_address', 'worksite_city', 'worksite_state',
+    'worksite_zip', 'apply_email', 'apply_phone', 'apply_url',
+    'job_order_exists', 'active_date', 'url_job'
 ]
 
-df_display = (
-    filtered_df
-    .loc[:, available_columns]
-    .rename(columns={k: COLUMNS_MAP[k] for k in available_columns})
-)
-
-final_columns_available = [
-    col for col in FINAL_COLUMNS
-    if col in df_display.columns
+final_df = filtered_df[
+    [col for col in FINAL_COLUMNS if col in filtered_df.columns]
 ]
 
 # --------------------------------------------------
 # Display
 # --------------------------------------------------
-st.dataframe(
-    df_display[final_columns_available],
-    use_container_width=True
-)
-
-# Show number of results
-st.markdown(f"**Number of results:** {df_display.shape[0]}")
+st.dataframe(final_df, use_container_width=True)
+st.markdown(f"**Number of results:** {final_df.shape[0]}")
