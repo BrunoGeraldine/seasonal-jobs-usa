@@ -44,7 +44,7 @@ jobs:
       - name: Extract Seasonal Jobs (incremental)
         run: |
           echo "================ EXTRACT ================="
-          python CI-CD/extract_seasonal_jobs.py
+          python scripts/extract_seasonal_jobs.py
 
       # --------------------------------------------------
       # Transformação
@@ -52,7 +52,7 @@ jobs:
       - name: Transform Seasonal Jobs
         run: |
           echo "================ TRANSFORM ================="
-          python CI-CD/transform_seasonal_jobs.py
+          python scripts/transform_seasonal_jobs.py
 
       # --------------------------------------------------
       # Commit dos dados (se houver mudanças)

@@ -3,8 +3,8 @@ import requests
 import pandas as pd
 from datetime import datetime
 
-DATASET_PATH = "dataset/seasonal_jobs_raw.parquet"
-CHECKPOINT_PATH = "dataset/seasonal_jobs_last_run.txt"
+DATASET_PATH = "../dataset/seasonal_jobs_raw.parquet"
+CHECKPOINT_PATH = "../dataset/seasonal_jobs_last_run.txt"
 
 API_URL = "https://api.seasonaljobs.dol.gov/datahub/"
 PARAMS = {

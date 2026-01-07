@@ -2,8 +2,8 @@ import pandas as pd
 from pathlib import Path
 import sys
 
-INPUT_PATH = Path("dataset/seasonal_jobs_raw.parquet")
-OUTPUT_PATH = Path("dataset/seasonal_jobs_treated.parquet")
+INPUT_PATH = Path("../dataset/seasonal_jobs_raw.parquet")
+OUTPUT_PATH = Path("../dataset/seasonal_jobs_treated.parquet")
 
 
 COLUMN_MAPPING = {
