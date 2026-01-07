@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from pathlib import Path
 
 # ================== CONFIG ==================
 PAGE_SIZE = 50
@@ -15,9 +16,16 @@ FILTER_ACTIVE = True
 
 BASE_URL = "https://api.seasonaljobs.dol.gov/datahub/"
 
-DATASET_PATH = "../dataset/seasonal_jobs_raw.parquet"
-CHECKPOINT_DATE_PATH = "../dataset/seasonal_jobs_last_run.txt"
-CHECKPOINT_PAGE_PATH = "../dataset/seasonal_jobs_last_page.txt"
+# Garantir que os caminhos funcionem tanto localmente quanto no CI/CD
+BASE_DIR = Path(__file__).parent.parent
+DATASET_DIR = BASE_DIR / "dataset"
+
+# Criar diretório se não existir
+DATASET_DIR.mkdir(parents=True, exist_ok=True)
+
+DATASET_PATH = DATASET_DIR / "seasonal_jobs_raw.parquet"
+CHECKPOINT_DATE_PATH = DATASET_DIR / "seasonal_jobs_last_run.txt"
+CHECKPOINT_PAGE_PATH = DATASET_DIR / "seasonal_jobs_last_page.txt"
 
 PARAMS_BASE = {
     "api-version": "2020-06-30",
@@ -43,7 +51,7 @@ session.mount("https://", adapter)
 # --------------------------------------------------
 # Load checkpoints
 # --------------------------------------------------
-if os.path.exists(CHECKPOINT_DATE_PATH):
+if CHECKPOINT_DATE_PATH.exists():
     with open(CHECKPOINT_DATE_PATH, "r") as f:
         last_run_dt = pd.to_datetime(f.read().strip(), errors="coerce", utc=True)
     print(f"▶️ Checkpoint data: {last_run_dt}")
@@ -51,7 +59,7 @@ else:
     last_run_dt = None
     print("⚠️ Sem checkpoint de data — FULL LOAD")
 
-if os.path.exists(CHECKPOINT_PAGE_PATH):
+if CHECKPOINT_PAGE_PATH.exists():
     with open(CHECKPOINT_PAGE_PATH, "r") as f:
         start_page = int(f.read().strip())
     print(f"▶️ Retomando da página {start_page}")
@@ -90,16 +98,14 @@ while True:
 
         if "dhTimestamp" not in df_page.columns:
             raise RuntimeError("Coluna dhTimestamp não encontrada")
-######
-        #df_page["dhTimestamp"] = pd.to_datetime(
-        #    df_page["dhTimestamp"], errors="coerce", utc=True
-        #)
+
         df_page["dhTimestamp"] = pd.to_datetime(
             df_page["dhTimestamp"],
-                    format="ISO8601",
-                    errors="coerce",
-                    utc=True
-            )   
+            format="ISO8601",
+            errors="coerce",
+            utc=True
+        )
+        
         if last_run_dt is not None:
             df_page = df_page[df_page["dhTimestamp"] > last_run_dt]
 
@@ -134,7 +140,7 @@ if not all_pages:
 
 df_new = pd.concat(all_pages, ignore_index=True)
 
-if os.path.exists(DATASET_PATH):
+if DATASET_PATH.exists():
     df_existing = pd.read_parquet(DATASET_PATH)
 else:
     df_existing = pd.DataFrame()
@@ -157,7 +163,7 @@ new_checkpoint = df_new["dhTimestamp"].max()
 with open(CHECKPOINT_DATE_PATH, "w") as f:
     f.write(new_checkpoint.isoformat())
 
-if os.path.exists(CHECKPOINT_PAGE_PATH):
+if CHECKPOINT_PAGE_PATH.exists():
     os.remove(CHECKPOINT_PAGE_PATH)
 
 print(f"✓ Checkpoint data atualizado: {new_checkpoint}")
