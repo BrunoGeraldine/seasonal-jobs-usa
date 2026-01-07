@@ -8,20 +8,45 @@ Usar o link para atualizar os dados pois a API nao traz as informacoes necessari
 
 
 Repo Git
+seasonal-jobs-platform/
 │
-├── CI-CD/
-│   ├── extract_seasonal_jobs.py   ← captura da API (CI-ready)
-│   └── transform_seasonal_jobs.py ← limpeza / tratamento
+├── .github/
+│   └── workflows/
+│       └── data_pipeline.yml        ← CI/CD (ETL automático)
+│
+├── src/
+│   ├── extract_incremental.py       ← Extração incremental da API
+│   └── transform_data.py            ← Limpeza / modelagem
 │
 ├── dataset/
-│   ├── seasonal_jobs_raw.parquet
-│   └── seasonal_jobs_treated.parquet
+│   ├── seasonal_jobs_raw.parquet    ← Dados brutos (histórico)
+│   ├── seasonal_jobs_last_run.txt   ← Checkpoint incremental
+│   └── seasonal_jobs_treated.parquet← Dados prontos p/ app
 │
-└── .github/workflows/
-    └── data_pipeline.yml          ← CI/CD com GitHub Actions
+├── app.py                           ← Streamlit (frontend)
+├── requirements.txt
+└── README.md
 
 
+🔁 ETL incremental automático
+
+🧠 Dados versionados
+
+⚙️ CI/CD real com GitHub Actions
+
+🖥️ Streamlit consumindo dados prontos
+
+🚀 Arquitetura de produto real
 
 
+🔜 Próximo passo natural
 
+OAuth Gmail / Outlook
 
+“Apply with 1 click”
+
+Banco Postgres
+
+API FastAPI
+
+Monetização

@@ -1,0 +1,39 @@
+name: Seasonal Jobs Data Pipeline
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # todos os dias às 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  etl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install pandas requests pyarrow
+
+      - name: Run incremental extraction
+        run: |
+          python CI-CD/extract_incremental.py
+
+      - name: Run transformation
+        run: |
+          python CI-CD/transform_data.py
+
+      - name: Commit updated datasets
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add dataset/*.parquet dataset/*.txt
+          git commit -m "chore(data): update seasonal jobs dataset" || echo "No changes"
+          git push
