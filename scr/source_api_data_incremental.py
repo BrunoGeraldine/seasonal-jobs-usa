@@ -90,11 +90,16 @@ while True:
 
         if "dhTimestamp" not in df_page.columns:
             raise RuntimeError("Coluna dhTimestamp não encontrada")
-
+######
+        #df_page["dhTimestamp"] = pd.to_datetime(
+        #    df_page["dhTimestamp"], errors="coerce", utc=True
+        #)
         df_page["dhTimestamp"] = pd.to_datetime(
-            df_page["dhTimestamp"], errors="coerce", utc=True
-        )
-
+            df_page["dhTimestamp"],
+                    format="ISO8601",
+                    errors="coerce",
+                    utc=True
+            )   
         if last_run_dt is not None:
             df_page = df_page[df_page["dhTimestamp"] > last_run_dt]
 
