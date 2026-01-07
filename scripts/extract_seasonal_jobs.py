@@ -1,67 +1,166 @@
 import os
+import time
 import requests
 import pandas as pd
-from datetime import datetime
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+# ================== CONFIG ==================
+PAGE_SIZE = 50
+REQUEST_TIMEOUT = 30
+MAX_RETRIES = 5
+BACKOFF_FACTOR = 2
+FILTER_ACTIVE = True
+# ============================================
+
+BASE_URL = "https://api.seasonaljobs.dol.gov/datahub/"
 
 DATASET_PATH = "../dataset/seasonal_jobs_raw.parquet"
-CHECKPOINT_PATH = "../dataset/seasonal_jobs_last_run.txt"
+CHECKPOINT_DATE_PATH = "../dataset/seasonal_jobs_last_run.txt"
+CHECKPOINT_PAGE_PATH = "../dataset/seasonal_jobs_last_page.txt"
 
-API_URL = "https://api.seasonaljobs.dol.gov/datahub/"
-PARAMS = {
-    "api-version": "2020-06-30"
+PARAMS_BASE = {
+    "api-version": "2020-06-30",
+    "$top": PAGE_SIZE
 }
 
+if FILTER_ACTIVE:
+    PARAMS_BASE["$filter"] = "active eq true"
+
 # --------------------------------------------------
-# Load last checkpoint (if exists)
+# HTTP session with retry + backoff
 # --------------------------------------------------
-if os.path.exists(CHECKPOINT_PATH):
-    with open(CHECKPOINT_PATH, "r") as f:
-        last_run = f.read().strip()
-    print(f"▶️ Last checkpoint found: {last_run}")
+session = requests.Session()
+retry_strategy = Retry(
+    total=MAX_RETRIES,
+    backoff_factor=BACKOFF_FACTOR,
+    status_forcelist=[429, 500, 502, 503, 504],
+    allowed_methods=["GET"]
+)
+adapter = HTTPAdapter(max_retries=retry_strategy)
+session.mount("https://", adapter)
+
+# --------------------------------------------------
+# Load checkpoints
+# --------------------------------------------------
+if os.path.exists(CHECKPOINT_DATE_PATH):
+    with open(CHECKPOINT_DATE_PATH, "r") as f:
+        last_run_dt = pd.to_datetime(f.read().strip(), errors="coerce", utc=True)
+    print(f"▶️ Checkpoint data: {last_run_dt}")
 else:
-    last_run = None
-    print("⚠️ No checkpoint found — running FULL LOAD")
+    last_run_dt = None
+    print("⚠️ Sem checkpoint de data — FULL LOAD")
 
-# --------------------------------------------------
-# Fetch data
-# --------------------------------------------------
-response = requests.get(API_URL, params=PARAMS)
-response.raise_for_status()
-
-data = response.json()["value"]
-df_new = pd.DataFrame(data)
-
-# --------------------------------------------------
-# Incremental filter (if applicable)
-# --------------------------------------------------
-if last_run and "dhTimestamp" in df_new.columns:
-    df_new["dhTimestamp"] = pd.to_datetime(df_new["dhTimestamp"])
-    df_new = df_new[df_new["dhTimestamp"] > pd.to_datetime(last_run)]
-    print(f"🧩 Incremental rows: {len(df_new)}")
+if os.path.exists(CHECKPOINT_PAGE_PATH):
+    with open(CHECKPOINT_PAGE_PATH, "r") as f:
+        start_page = int(f.read().strip())
+    print(f"▶️ Retomando da página {start_page}")
 else:
-    print(f"📦 Full load rows: {len(df_new)}")
+    start_page = 0
+    print("▶️ Iniciando da página 0")
 
 # --------------------------------------------------
-# Merge with existing dataset
+# Paginated extract loop
 # --------------------------------------------------
+page = start_page
+all_pages = []
+total_new = 0
+
+print("Iniciando coleta paginada...")
+
+while True:
+    params = PARAMS_BASE.copy()
+    params["$skip"] = page * PAGE_SIZE
+
+    try:
+        response = session.get(
+            BASE_URL,
+            params=params,
+            timeout=REQUEST_TIMEOUT
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        records = data.get("value", [])
+        if not records:
+            print("✓ Fim da paginação")
+            break
+
+        df_page = pd.DataFrame(records)
+
+        if "dhTimestamp" not in df_page.columns:
+            raise RuntimeError("Coluna dhTimestamp não encontrada")
+######
+        #df_page["dhTimestamp"] = pd.to_datetime(
+        #    df_page["dhTimestamp"], errors="coerce", utc=True
+        #)
+        df_page["dhTimestamp"] = pd.to_datetime(
+            df_page["dhTimestamp"],
+                    format="ISO8601",
+                    errors="coerce",
+                    utc=True
+            )   
+        if last_run_dt is not None:
+            df_page = df_page[df_page["dhTimestamp"] > last_run_dt]
+
+        if not df_page.empty:
+            all_pages.append(df_page)
+            total_new += len(df_page)
+
+        page += 1
+
+        with open(CHECKPOINT_PAGE_PATH, "w") as f:
+            f.write(str(page))
+
+        print(
+            f"✓ Página {page} | "
+            f"Registros novos: {len(df_page)} | "
+            f"Total novos: {total_new}"
+        )
+
+        time.sleep(0.4)
+
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ Timeout / erro de rede: {e}")
+        print("⚠️ Salvando progresso e encerrando")
+        break
+
+# --------------------------------------------------
+# Consolidate dataset
+# --------------------------------------------------
+if not all_pages:
+    print("⚠️ Nenhum dado novo coletado")
+    exit(0)
+
+df_new = pd.concat(all_pages, ignore_index=True)
+
 if os.path.exists(DATASET_PATH):
-    df_old = pd.read_parquet(DATASET_PATH)
-    df_final = pd.concat([df_old, df_new]).drop_duplicates(subset=["case_id"])
+    df_existing = pd.read_parquet(DATASET_PATH)
 else:
-    df_final = df_new
+    df_existing = pd.DataFrame()
 
-# --------------------------------------------------
-# Save dataset
-# --------------------------------------------------
+if "case_id" in df_new.columns:
+    df_final = pd.concat([df_existing, df_new], ignore_index=True)
+    df_final = df_final.drop_duplicates(subset=["case_id"])
+else:
+    df_final = pd.concat([df_existing, df_new], ignore_index=True)
+    df_final = df_final.drop_duplicates()
+
 df_final.to_parquet(DATASET_PATH, index=False)
+print(f"✓ Parquet atualizado: {DATASET_PATH}")
 
 # --------------------------------------------------
-# Update checkpoint
+# Update checkpoints
 # --------------------------------------------------
-now = datetime.utcnow().isoformat()
+new_checkpoint = df_new["dhTimestamp"].max()
 
-with open(CHECKPOINT_PATH, "w") as f:
-    f.write(now)
+with open(CHECKPOINT_DATE_PATH, "w") as f:
+    f.write(new_checkpoint.isoformat())
 
-print(f"✅ Dataset saved with {len(df_final)} rows")
-print(f"🕒 Checkpoint updated: {now}")
+if os.path.exists(CHECKPOINT_PAGE_PATH):
+    os.remove(CHECKPOINT_PAGE_PATH)
+
+print(f"✓ Checkpoint data atualizado: {new_checkpoint}")
+print("✅ Extração completa com paginação garantida")
+
+#end of file
