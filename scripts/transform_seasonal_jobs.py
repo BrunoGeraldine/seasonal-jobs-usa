@@ -2,9 +2,14 @@ import pandas as pd
 from pathlib import Path
 import sys
 
-INPUT_PATH = Path("../dataset/seasonal_jobs_raw.parquet")
-OUTPUT_PATH = Path("../dataset/seasonal_jobs_treated.parquet")
+# ================== CONFIG ==================
+# Garantir que os caminhos funcionem tanto localmente quanto no CI/CD
+BASE_DIR = Path(__file__).parent.parent
+DATASET_DIR = BASE_DIR / "dataset"
 
+INPUT_PATH = DATASET_DIR / "seasonal_jobs_raw.parquet"
+OUTPUT_PATH = DATASET_DIR / "seasonal_jobs_treated.parquet"
+# ============================================
 
 COLUMN_MAPPING = {
     'caseNumber': 'case_number',
@@ -47,7 +52,6 @@ COLUMN_MAPPING = {
     'id': 'case_id'
 }
 
-
 FINAL_COLUMNS = [
     'case_id', 'case_number', 'case_status', 'visa_class', 'job_title',
     'basic_rate_from', 'basic_rate_to', 'overtime_rate_from', 'overtime_rate_to',
@@ -63,26 +67,56 @@ FINAL_COLUMNS = [
 
 
 def main():
+    print("🔄 Iniciando transformação dos dados...")
+    print(f"📂 Procurando arquivo em: {INPUT_PATH}")
+    
+    # Verificar se o arquivo existe
     if not INPUT_PATH.exists():
-        print("❌ Arquivo de entrada não encontrado")
+        print(f"❌ Arquivo de entrada não encontrado: {INPUT_PATH}")
+        print(f"📁 Diretório atual: {Path.cwd()}")
+        print(f"📁 BASE_DIR calculado: {BASE_DIR}")
+        print(f"📁 DATASET_DIR calculado: {DATASET_DIR}")
+        print(f"📁 Conteúdo do diretório dataset/:")
+        if DATASET_DIR.exists():
+            for file in DATASET_DIR.iterdir():
+                print(f"   - {file.name}")
+        else:
+            print(f"   ⚠️ Diretório {DATASET_DIR} não existe")
         sys.exit(1)
 
+    # Carregar dados brutos
+    print(f"✓ Arquivo encontrado, carregando dados...")
     df = pd.read_parquet(INPUT_PATH)
+    print(f"✓ {len(df)} registros carregados")
+    print(f"✓ Colunas originais: {len(df.columns)}")
 
+    # Renomear colunas
     df = df.rename(columns=COLUMN_MAPPING)
+    print(f"✓ Colunas renomeadas")
 
+    # Criar URL do job
     if "case_number" in df.columns:
         df["url_job"] = "https://seasonaljobs.dol.gov/jobs/" + df["case_number"].astype(str)
+        print(f"✓ Coluna url_job criada")
 
+    # Selecionar colunas finais
     final_cols = [c for c in FINAL_COLUMNS if c in df.columns]
     df_final = df[final_cols]
+    print(f"✓ Colunas finais selecionadas: {len(final_cols)}")
 
+    # Garantir que o diretório de saída existe
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Salvar dados tratados
     df_final.to_parquet(OUTPUT_PATH, index=False)
 
     print(f"✅ Transformação concluída: {len(df_final)} registros")
-    print(f"📁 Arquivo: {OUTPUT_PATH}")
+    print(f"📁 Arquivo salvo em: {OUTPUT_PATH}")
+    print(f"📊 Shape final: {df_final.shape}")
+    print(f"📊 Colunas: {list(df_final.columns)}")
 
 
 if __name__ == "__main__":
     main()
+
+#end of file

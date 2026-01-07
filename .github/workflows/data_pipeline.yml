@@ -45,10 +45,15 @@ jobs:
         run: |
           echo "📁 Diretório atual:"
           pwd
-          echo "📁 Conteúdo raiz:"
+          echo ""
+          echo "📁 Estrutura do projeto:"
           ls -la
-          echo "📁 Conteúdo dataset/:"
-          ls -la dataset/ || echo "Diretório dataset não existe ainda"
+          echo ""
+          echo "📁 Conteúdo de scripts/:"
+          ls -la scripts/ || echo "⚠️ Diretório scripts não existe"
+          echo ""
+          echo "📁 Conteúdo de dataset/:"
+          ls -la dataset/ || echo "⚠️ Diretório dataset não existe"
 
       # --------------------------------------------------
       # Extração (incremental)
@@ -59,12 +64,40 @@ jobs:
           python scripts/extract_seasonal_jobs.py
 
       # --------------------------------------------------
+      # Verificar se extração gerou dados
+      # --------------------------------------------------
+      - name: Verify extraction output
+        run: |
+          echo "📊 Verificando saída da extração:"
+          ls -lh dataset/
+          if [ -f "dataset/seasonal_jobs_raw.parquet" ]; then
+            echo "✅ Arquivo raw criado com sucesso"
+          else
+            echo "❌ Arquivo raw NÃO foi criado"
+            exit 1
+          fi
+
+      # --------------------------------------------------
       # Transformação
       # --------------------------------------------------
       - name: Transform Seasonal Jobs
         run: |
           echo "================ TRANSFORM ================="
           python scripts/transform_seasonal_jobs.py
+
+      # --------------------------------------------------
+      # Verificar se transformação gerou dados
+      # --------------------------------------------------
+      - name: Verify transformation output
+        run: |
+          echo "📊 Verificando saída da transformação:"
+          ls -lh dataset/
+          if [ -f "dataset/seasonal_jobs_treated.parquet" ]; then
+            echo "✅ Arquivo treated criado com sucesso"
+          else
+            echo "❌ Arquivo treated NÃO foi criado"
+            exit 1
+          fi
 
       # --------------------------------------------------
       # Commit dos dados (se houver mudanças)
