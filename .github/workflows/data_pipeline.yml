@@ -2,38 +2,75 @@ name: Seasonal Jobs Data Pipeline
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # todos os dias às 03:00 UTC
+    # Executa diariamente às 03:00 UTC
+    - cron: "0 3 * * *"
+
+  # Permite execução manual
   workflow_dispatch:
 
 jobs:
-  etl:
+  data-pipeline:
     runs-on: ubuntu-latest
 
     steps:
+      # --------------------------------------------------
+      # Checkout do repositório
+      # --------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # --------------------------------------------------
+      # Setup Python
+      # --------------------------------------------------
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
+      # --------------------------------------------------
+      # Instalar dependências
+      # --------------------------------------------------
       - name: Install dependencies
         run: |
-          pip install pandas requests pyarrow
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Run incremental extraction
+      # --------------------------------------------------
+      # Extração (incremental)
+      # --------------------------------------------------
+      - name: Extract Seasonal Jobs (incremental)
         run: |
-          python CI-CD/extract_incremental.py
+          echo "================ EXTRACT ================="
+          python CI-CD/extract_seasonal_jobs.py
 
-      - name: Run transformation
+      # --------------------------------------------------
+      # Transformação
+      # --------------------------------------------------
+      - name: Transform Seasonal Jobs
         run: |
-          python CI-CD/transform_data.py
+          echo "================ TRANSFORM ================="
+          python CI-CD/transform_seasonal_jobs.py
 
-      - name: Commit updated datasets
+      # --------------------------------------------------
+      # Commit dos dados (se houver mudanças)
+      # --------------------------------------------------
+      - name: Commit dataset changes
         run: |
+          echo "================ COMMIT ================="
+
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add dataset/*.parquet dataset/*.txt
-          git commit -m "chore(data): update seasonal jobs dataset" || echo "No changes"
+
+          git add dataset/
+
+          git commit -m "chore(data): update seasonal jobs dataset" || echo "No changes to commit"
+
+      # --------------------------------------------------
+      # Push
+      # --------------------------------------------------
+      - name: Push changes
+        run: |
           git push
