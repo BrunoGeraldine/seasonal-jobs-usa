@@ -8,6 +8,12 @@ on:
   # Permite execução manual
   workflow_dispatch:
 
+# ============================================
+# ADICIONE ESTAS PERMISSÕES
+# ============================================
+permissions:
+  contents: write  # Necessário para fazer push
+
 jobs:
   data-pipeline:
     runs-on: ubuntu-latest
@@ -20,6 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          #token: ${{ secrets.GITHUB_TOKEN }}  # Adicione o token - OPCIONAL
 
       # --------------------------------------------------
       # Setup Python
@@ -127,3 +134,15 @@ jobs:
           else
             echo "⚠️ Nenhuma mudança para fazer push"
           fi
+
+      ## --------------------------------------------------
+      ## Commit e Push usando action
+      ## --------------------------------------------------
+      #- name: Commit and Push changes
+      #  uses: stefanzweifel/git-auto-commit-action@v5
+      #  with:
+      #    commit_message: "chore(data): update seasonal jobs dataset [skip ci]"
+      #    file_pattern: "dataset/*"
+      #    commit_user_name: "github-actions[bot]"
+      #    commit_user_email: "github-actions[bot]@users.noreply.github.com"
+      #    skip_dirty_check: false
