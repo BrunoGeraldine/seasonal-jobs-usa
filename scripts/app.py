@@ -145,3 +145,5 @@ st.markdown(f"**Number of results:** {filtered_df.shape[0]}")
 
 st.markdown("---")
 st.markdown("Developed by Bruno Geraldine")
+st.markdown("---")
+
