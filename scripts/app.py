@@ -31,13 +31,47 @@ for col in date_cols:
 df["begin_month"] = df["begin_date"].dt.to_period("M").astype(str)
 df["tot_months"] = (df["end_date"] - df["begin_date"]).dt.days.div(30)
 
+# Criar coluna de categoria de salário
+def categorize_salary(salary):
+    if pd.isna(salary):
+        return "Unknown"
+    elif salary <= 10:
+        return "Until $10/hour"
+    elif salary <= 20:
+        return "Until $20/hour"
+    elif salary <= 30:
+        return "Until $30/hour"
+    elif salary <= 40:
+        return "Until $40/hour"
+    elif salary <= 50:
+        return "Until $50/hour"
+    else:
+        return "Greater than $60/hour"
+
+df["salary_range"] = df["basic_rate_from"].apply(categorize_salary)
+
+# Definir ordem das categorias
+salary_categories_order = [
+    "Until $10/hour",
+    "Until $20/hour",
+    "Until $30/hour",
+    "Until $40/hour",
+    "Until $50/hour",
+    "Greater than $60/hour"
+]
+
+# Converter para categoria com ordem
+df["salary_range"] = pd.Categorical(df["salary_range"], categories=salary_categories_order, ordered=True)
+
 # ---------------- Sidebar filters ----------------
 st.sidebar.header("Filters")
 
-salary_min = float(df["basic_rate_from"].min())
-salary_max = float(df["basic_rate_from"].max())
-salary_range = st.sidebar.slider(
-    "Basic Rate From", salary_min, salary_max, (salary_min, salary_max)
+# Filter: Basic Rate From (now using categories)
+available_salary_ranges = sorted([cat for cat in salary_categories_order if cat in df["salary_range"].unique()])
+selected_salary_ranges = st.sidebar.multiselect(
+    "Basic Rate From (Salary Range)", 
+    available_salary_ranges,
+    default=available_salary_ranges
 )
 
 work_hour_min = int(df["work_hour_num_basic"].min())
@@ -74,9 +108,9 @@ selected_states = st.sidebar.multiselect("Worksite State", states)
 # ---------------- Apply filters ----------------
 filtered_df = df.copy()
 
-filtered_df = filtered_df[
-    filtered_df["basic_rate_from"].between(*salary_range)
-]
+# Apply salary range filter (categories)
+if selected_salary_ranges:
+    filtered_df = filtered_df[filtered_df["salary_range"].isin(selected_salary_ranges)]
 
 filtered_df = filtered_df[
     filtered_df["work_hour_num_basic"].between(*work_hour_range)
@@ -105,6 +139,5 @@ if experience_filter != "All":
     ]
 
 # ---------------- Display ----------------
-st.dataframe(filtered_df, use_container_width=True)
+st.dataframe(filtered_df, width='stretch')
 st.markdown(f"**Number of results:** {filtered_df.shape[0]}")
-

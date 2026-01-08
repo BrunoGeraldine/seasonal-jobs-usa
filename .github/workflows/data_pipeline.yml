@@ -93,6 +93,14 @@ jobs:
           python scripts/transform_seasonal_jobs.py
 
       # --------------------------------------------------
+      # Parquet to XLSX
+      # --------------------------------------------------
+      - name: Make XLSX from Parquet
+        run: |
+          echo "================ Make ================="
+          python scripts/parquet_to_xlsx.py
+
+      # --------------------------------------------------
       # Verificar se transformação gerou dados
       # --------------------------------------------------
       - name: Verify transformation output

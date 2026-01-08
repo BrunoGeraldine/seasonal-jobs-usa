@@ -81,7 +81,8 @@ seasonal-jobs-brunss/
 ├── scripts/
 │   ├── extract_seasonal_jobs.py          ← Data extraction module
 │   ├── transform_seasonal_jobs.py        ← Data transformation module
-│   └── app.py                            ← Streamlit web application
+│   ├── app.py                            ← Streamlit web application
+│   └── parquet_to_excel.py               ← Utility: Convert Parquet to Excel files
 │
 └── dataset/
     ├── seasonal_jobs_raw.parquet         ← Raw data (cumulative history)
@@ -173,6 +174,29 @@ FILTER_ACTIVE = True
   - `tot_months` - Calculated duration (end_date - begin_date)
 - **Wide Layout** - Optimized for desktop viewing
 
+### 4. **Parquet to xlsx format Converter** (`parquet_to_xlsx.py`) - NEW UTILITY
+
+**Purpose:** Convert Parquet files to Excel format with automatic timezone handling.
+
+**Features:**
+- Reads `seasonal_jobs_raw.parquet`
+- Automatically removes timezone information from datetime columns (Excel compatibility)
+- Exports to `.xlsx` format
+- Displays progress and record count
+
+**Usage:**
+```bash
+python parquet_to_xlsx.py
+```
+
+**Output:**
+- Creates `seasonal_jobs_raw.xlsx` in the dataset folder
+
+**Technical Details:**
+- Handles timezone-aware datetime columns by converting to timezone-naive
+- Reports which columns had timezone information removed
+- Useful for non-technical stakeholders who prefer Excel
+
 ## 📦 Dependencies
 
 **Core Libraries:**
@@ -228,9 +252,14 @@ python transform_seasonal_jobs.py
 **Step 3: Launch analytics app**
 ```bash
 streamlit run app.py
+
+
+**Optional: Export to Excel**
+```bash
+python parquet_to_xlsx.py
 ```
 
-The application will open at `http://localhost:8501`
+The Streamlit application will open at `http://localhost:8501`
 
 ## 🔑 Key Configuration Options
 
@@ -292,6 +321,10 @@ BACKOFF_FACTOR = 2      # Exponential backoff multiplier
 
 ## 🔜 Roadmap & Future Enhancements
 
+**Current Enhancements (Completed - Jan 2026):**
+- [x] **app.py** - Enhanced filtering with salary range groups
+- [x] **parquet_to_xlsx.py** - Utility for Excel export with timezone handling
+
 **Phase 2 - User Features:**
 - [ ] OAuth integration (Gmail / Outlook)
 - [ ] One-click job application
@@ -323,20 +356,4 @@ Contributions are welcome! Please follow these steps:
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## ❓ FAQ
-
-**Q: How often is data refreshed?**  
-A: The extraction runs on a manual schedule. Implement GitHub Actions for automated hourly/daily runs.
-
-**Q: Can I filter by specific states or employers?**  
-A: Yes! The Streamlit app supports sidebar filters. Extend `app.py` to add more filter options.
-
-**Q: What if the API is down?**  
-A: The retry strategy will attempt 5 times with backoff. If it fails, previous data remains available.
-
-**Q: How is incremental loading tracked?**  
-A: A checkpoint file stores the last successful extraction timestamp. The next run fetches only newer records.
-
-## 📞 Contact
-
-For questions or support, please open an issue on GitHub.
+### This is the end!
