@@ -141,3 +141,7 @@ if experience_filter != "All":
 # ---------------- Display ----------------
 st.dataframe(filtered_df, width='stretch')
 st.markdown(f"**Number of results:** {filtered_df.shape[0]}")
+
+
+st.markdown("---")
+st.markdown("Developed by Bruno Geraldine")
