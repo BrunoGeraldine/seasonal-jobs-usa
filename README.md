@@ -2,6 +2,11 @@
 
 A comprehensive ETL pipeline and analytics platform for processing and visualizing H2 seasonal job opportunities from the U.S. Department of Labor.
 
+This project addresses an important issue in filling available positions for seasonal workers in the United States using H2A and H2B visas, providing a dataset of available positions with contact information for hiring companies.
+
+This request came from a group of people who found it difficult to filter positions that meet the requirements of each worker.
+
+
 ## 📋 Overview
 
 This project implements an **incremental ETL pipeline** that:
@@ -357,3 +362,4 @@ Contributions are welcome! Please follow these steps:
 5. Open a Pull Request
 
 ### This is the end!
+
